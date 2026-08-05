@@ -112,6 +112,7 @@ summary{font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--vault)
 .pilar dd{margin:4px 0 0;font-family:var(--mono);font-size:19px;font-weight:600}
 .pilar .bar{height:3px;margin-top:9px;background:var(--mist)}
 .pilar .bar i{display:block;height:100%;background:var(--vault)}
+.pilar .split{margin:7px 0 0;font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);line-height:1.4}
 h4.sec{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:26px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--ink)}
 .linha{display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-family:var(--mono);font-size:13px;padding:7px 0;border-bottom:1px solid var(--mist)}
 .linha .v{font-variant-numeric:tabular-nums;font-weight:500}
@@ -738,9 +739,10 @@ function calcular(inp) {
   const baseMultaTotal = R2(baseMulta + fgtsRescisorio);
   const multa = R2(baseMultaTotal * r.multa);
   const saldoTotalConta = R2(saldo + fgtsRescisorio + multa);
+  const saldoLiberado = inp.modalidade === 'aniversario' ? 0 : R2((saldo + fgtsRescisorio) * r.saque);
   const saqueDisponivel = inp.modalidade === 'aniversario'
     ? R2(multa)
-    : R2((saldo + fgtsRescisorio) * r.saque + multa);
+    : R2(saldoLiberado + multa);
 
   // -------- seguro-desemprego
   const mesesTrab = mesesEntre(inp.admissao, ultimoTrabalhado);
@@ -758,7 +760,7 @@ function calcular(inp) {
   return {
     r, R, dia, anos, diasAvisoLei, diasIndenizados, diasTrabalhadosAviso, ultimoTrabalhado, projetada,
     P, Dsc, totalProventos, totalDescontos, liquidoRescisao,
-    fgts: { meses, depMensal, baseMulta, fgtsRescisorio, baseMultaTotal, multa, saldoProjetado: saldo, saldoTotalConta, saque: saqueDisponivel, pctMulta: r.multa },
+    fgts: { meses, depMensal, baseMulta, fgtsRescisorio, baseMultaTotal, multa, saldoLiberado, saldoProjetado: saldo, saldoTotalConta, saque: saqueDisponivel, pctMulta: r.multa },
     sd, mesesTrab, avosF, irSaldo, ir13, inssSaldo, inss13,
     totalGeral: R2(liquidoRescisao + saqueDisponivel + sd.total)
   };
@@ -1024,7 +1026,7 @@ function renderRelatorio(c, inp) {
 
   <dl class="pilar">
     <div><dt>Rescisão líquida</dt><dd>${BRL(c.liquidoRescisao)}</dd>${barra(c.liquidoRescisao, max)}</div>
-    <div><dt>FGTS liberado para saque</dt><dd>${BRL(c.fgts.saque)}</dd>${barra(c.fgts.saque, max)}</div>
+    <div><dt>FGTS liberado para saque</dt><dd>${BRL(c.fgts.saque)}</dd>${barra(c.fgts.saque, max)}<p class="split">${BRL(c.fgts.saldoLiberado)} saldo + ${BRL(c.fgts.multa)} multa</p></div>
     <div><dt>Seguro-desemprego</dt><dd>${BRL(c.sd.total)}</dd>${barra(c.sd.total, max)}</div>
   </dl>
 
@@ -1042,6 +1044,9 @@ function renderRelatorio(c, inp) {
   ${c.fgts.meses > 0 ? `<div class="linha"><span>Depósitos projetados até a demissão</span><span class="v">${c.fgts.meses} meses</span><span class="why">${BRL(c.fgts.depMensal)}/mês (8% da remuneração) mais rendimento de ${(inp.taxa * 100).toFixed(4).replace('.', ',')}% ao mês, a partir da posição do extrato.</span></div>` : ''}
   <div class="linha"><span>Saldo estimado na data da saída</span><span class="v">${BRL(c.fgts.saldoProjetado)}</span></div>
   <div class="linha"><span>FGTS sobre as verbas rescisórias (8%)</span><span class="v">${BRL(c.fgts.fgtsRescisorio)}</span><span class="why">Incide sobre saldo de salário, aviso indenizado e 13º; não incide sobre férias.</span></div>
+  ${inp.modalidade === 'aniversario'
+    ? `<div class="linha"><span>Saldo liberado no saque</span><span class="v">${BRL(0)}</span><span class="why">No saque-aniversário só a multa é liberada agora; o saldo de ${BRL(c.fgts.saldoProjetado + c.fgts.fgtsRescisorio)} fica retido na conta.</span></div>`
+    : `<div class="linha"><span>Saldo liberado no saque${c.r.saque < 1 ? ` (${(c.r.saque * 100).toFixed(0)}%)` : ''}</span><span class="v">${BRL(c.fgts.saldoLiberado)}</span><span class="why">${c.r.saque < 1 ? `${(c.r.saque * 100).toFixed(0)}% de ` : ''}${BRL(c.fgts.saldoProjetado + c.fgts.fgtsRescisorio)} — saldo estimado na saída + FGTS sobre as verbas rescisórias${c.r.saque < 1 ? ', reduzido pelo acordo do art. 484-A' : ''}.</span></div>`}
   ${c.fgts.pctMulta > 0 ? `<div class="linha"><span>Multa rescisória (${(c.fgts.pctMulta * 100).toFixed(0)}%)</span><span class="v">${BRL(c.fgts.multa)}</span><span class="why">${(c.fgts.pctMulta * 100).toFixed(0)}% sobre ${BRL(c.fgts.baseMultaTotal)} — base do extrato projetada, sem a distribuição de resultados.</span></div>` : `<div class="linha"><span>Multa rescisória</span><span class="v">${BRL(0)}</span><span class="why">Não devida nesta modalidade.</span></div>`}
   <div class="linha tot"><span>Disponível para saque</span><span class="v">${BRL(c.fgts.saque)}</span></div>
   ${inp.modalidade === 'aniversario' && c.fgts.pctMulta > 0 ? `<div class="aviso alerta">No saque-aniversário você recebe agora só a multa. O restante (${BRL(c.fgts.saldoTotalConta - c.fgts.multa)}) fica na conta e sai nos saques anuais, salvo se você pedir o retorno à modalidade saque-rescisão — que só vale depois de 25 meses.</div>` : ''}
