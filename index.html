@@ -115,9 +115,10 @@ summary{font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--vault)
 .pilar .split{margin:12px 0 0;padding-top:11px;border-top:1px dashed var(--line)}
 .pilar .split-bar{display:flex;height:7px;border-radius:2px;overflow:hidden;background:var(--mist)}
 .pilar .split-bar i{display:block;height:100%}
-.pilar .split-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.pilar .split-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 8px;margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.pilar .split-row span{white-space:nowrap}
 .pilar .split-row i.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:-1px;flex:none}
-.pilar .split-row b{color:var(--ink);font-weight:700;font-size:13px}
+.pilar .split-row b{white-space:nowrap;color:var(--ink);font-weight:700;font-size:13px}
 h4.sec{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:26px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--ink)}
 .linha{display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-family:var(--mono);font-size:13px;padding:7px 0;border-bottom:1px solid var(--mist)}
 .linha .v{font-variant-numeric:tabular-nums;font-weight:500}
@@ -985,7 +986,7 @@ function splitSaque(fgts) {
   return `<div class="split">
     <div class="split-bar"><i style="width:${pctSaldo.toFixed(1)}%;background:var(--vault)"></i><i style="width:${pctMulta.toFixed(1)}%;background:var(--stamp)"></i></div>
     <div class="split-row"><span><i class="dot" style="background:var(--vault)"></i>Saldo</span><b>${BRL(fgts.saldoLiberado)}</b></div>
-    <div class="split-row"><span><i class="dot" style="background:var(--stamp)"></i>Multa</span><b>${BRL(fgts.multa)}</b></div>
+    <div class="split-row"><span><i class="dot" style="background:var(--stamp)"></i>Multa rescisória</span><b>${BRL(fgts.multa)}</b></div>
   </div>`;
 }
 
