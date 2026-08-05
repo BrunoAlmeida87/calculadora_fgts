@@ -850,13 +850,18 @@ function renderLogPdf(ex) {
     <table><thead><tr><th>Campo</th><th class="num">Valor usado</th><th>Status</th></tr></thead><tbody>${cabLinhas}</tbody></table>
 
     <h4 class="sec">Todas as linhas lidas do PDF, na ordem em que aparecem</h4>
-    <div class="scroll"><table><thead><tr><th>Pág.</th><th>Texto bruto</th><th>Reconhecida como</th></tr></thead><tbody>
+    <div class="scroll"><table><thead><tr><th>Pág.</th><th>Texto bruto</th><th>Reconhecida como</th><th>Data extraída</th><th class="num">Valor extraído</th><th class="num">Saldo extraído</th></tr></thead><tbody>
     ${linhas.map(l => {
-      let status;
-      if (l.mv) status = `<span class="tag ${TIPO_TAG[l.mv.tipo] || 't-adj'}">${TIPO_LBL[l.mv.tipo] || 'outro'}</span>${l.mv.dup ? ' <span class="tag t-adj">repetido</span>' : ''}`;
+      let status, data = '—', valor = '—', saldo = '—';
+      if (l.mv) {
+        status = `<span class="tag ${TIPO_TAG[l.mv.tipo] || 't-adj'}">${TIPO_LBL[l.mv.tipo] || 'outro'}</span>${l.mv.dup ? ' <span class="tag t-adj">repetido</span>' : ''}`;
+        data = dateToBr(l.mv.data);
+        valor = BRL(l.mv.valor);
+        saldo = l.mv.total === null ? '—' : BRL(l.mv.total);
+      }
       else if (possivelPerdida(l)) status = `<span class="tag t-saq">verificar</span>`;
       else status = `<span class="tag t-adj">ignorada</span>`;
-      return `<tr><td>${l.pag}</td><td>${escapeHtml(l.texto)}</td><td>${status}</td></tr>`;
+      return `<tr><td>${l.pag}</td><td>${escapeHtml(l.texto)}</td><td>${status}</td><td>${data}</td><td class="num">${valor}</td><td class="num">${saldo}</td></tr>`;
     }).join('')}
     </tbody></table></div>`;
 }
