@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extrato FGTS → Simulador de Rescisão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E4E8E6;
+  --card:#FAFBF9;
+  --ink:#11222A;
+  --ink-soft:#4A5C63;
+  --mist:#C2CBC7;
+  --vault:#1D5A4A;
+  --stamp:#B8860F;
+  --debit:#9C3524;
+  --line:#B8C2BE;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+
+.top{border-bottom:2px solid var(--ink);padding:34px 0 18px;margin-bottom:34px}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+h1{font-family:var(--mono);font-weight:600;font-size:clamp(26px,4.4vw,40px);line-height:1.08;margin:10px 0 8px;letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--vault)}
+.sub{max-width:62ch;color:var(--ink-soft);margin:0}
+
+.step{margin:0 0 30px;background:var(--card);border:1px solid var(--line);border-radius:3px}
+.step>header{display:flex;gap:14px;align-items:baseline;padding:16px 20px;border-bottom:1px solid var(--line)}
+.step-n{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--card);background:var(--ink);width:22px;height:22px;display:grid;place-items:center;border-radius:2px;flex:none;transform:translateY(2px)}
+.step[data-done="1"] .step-n{background:var(--vault)}
+.step h2{font-family:var(--mono);font-size:15px;font-weight:600;margin:0;letter-spacing:.01em}
+.step .hint{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right}
+.step>.body{padding:20px}
+.step[data-locked="1"]{opacity:.5;pointer-events:none}
+
+.drop{border:1.5px dashed var(--line);border-radius:3px;background:#fff;padding:30px 20px;text-align:center;transition:border-color .15s,background .15s;cursor:pointer;display:block}
+.drop:hover,.drop.over{border-color:var(--vault);background:#F3F7F4}
+.drop strong{display:block;font-family:var(--mono);font-size:14px;margin-bottom:4px}
+.drop span{font-size:13px;color:var(--ink-soft)}
+.drop input{display:none}
+.alt{margin-top:12px;font-size:13px;color:var(--ink-soft)}
+.alt button{background:none;border:none;color:var(--vault);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+textarea{width:100%;min-height:150px;font-family:var(--mono);font-size:12px;padding:10px;border:1px solid var(--line);border-radius:3px;background:#fff}
+
+.legenda{display:flex;flex-wrap:wrap;gap:9px 18px;align-items:center;padding:11px 14px;margin:0 0 22px;background:#F1F4F2;border:1px solid var(--line);border-radius:2px;font-size:12.5px;color:var(--ink-soft)}
+.legenda b{color:var(--ink);font-weight:600}
+.legenda .badge{float:none;margin:0 5px 0 0}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px 20px}
+.field.pede{border-left:3px solid var(--stamp);padding-left:12px;margin-left:-3px}
+label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px;overflow:hidden}
+.badge{float:right;font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;padding:1px 5px;border-radius:2px;border:1px solid currentColor;margin-left:8px}
+.b-auto{color:var(--vault)}
+.b-conf{color:var(--stamp);background:#FBF6E9}
+.b-man{color:var(--ink);background:#EDF0EE}
+input[type=text],input[type=date],input[type=number],select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:2px;background:#fff;font-family:var(--mono);font-size:14px;color:var(--ink)}
+.field.pede input,.field.pede select{border-color:#D8C48A;background:#FFFDF7}
+input:focus,select:focus,textarea:focus,.drop:focus-visible,button:focus-visible{outline:2px solid var(--vault);outline-offset:1px}
+.field small{display:block;margin-top:4px;font-size:11.5px;color:var(--ink-soft);line-height:1.35}
+input[disabled],select[disabled]{opacity:.45}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-top:14px}
+.check input{margin-top:3px;flex:none}
+.check label{text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:13.5px;color:var(--ink);margin:0;overflow:visible}
+.btn{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.04em;padding:11px 20px;border-radius:2px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+.btn:hover{background:#000}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--mist)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:18px}
+.cards div{background:var(--card);padding:12px 14px}
+.cards dt{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.cards dd{margin:3px 0 0;font-family:var(--mono);font-size:16px;font-weight:600}
+.cards dd.sm{font-size:13px;font-weight:500}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+th{text-align:left;font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);padding:7px 8px;border-bottom:1px solid var(--ink)}
+td{padding:6px 8px;border-bottom:1px solid var(--mist)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:2px;border:1px solid currentColor}
+.t-dep{color:var(--vault)}.t-jam{color:#3B6A86}.t-saq{color:var(--debit)}.t-dist{color:var(--stamp)}.t-adj{color:var(--ink-soft)}
+details{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+summary{font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--vault);font-weight:500}
+.scroll{max-height:340px;overflow:auto;margin-top:10px;border:1px solid var(--mist)}
+.scroll table{font-size:11.5px}
+.scroll th{position:sticky;top:0;background:var(--card)}
+
+.fita{position:relative;background:#fff;border:1px solid var(--line);padding:34px 30px 30px}
+.carimbo{position:absolute;top:16px;right:14px;transform:rotate(-7deg);border:2px solid var(--debit);color:var(--debit);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;padding:5px 9px;line-height:1.25;text-align:center;opacity:.85;border-radius:2px}
+.rec-head{border-bottom:1px dashed var(--line);padding-bottom:14px;margin-bottom:20px}
+.rec-head h3{font-family:var(--mono);font-size:15px;margin:0 0 4px;letter-spacing:.02em}
+.rec-head p{margin:0;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft)}
+.total{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 22px;margin:8px 0 22px}
+.total .big{font-family:var(--mono);font-size:clamp(30px,6vw,46px);font-weight:700;letter-spacing:-.03em;color:var(--vault);line-height:1}
+.total .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);padding-bottom:6px}
+.pilar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:24px}
+.pilar div{background:#fff;padding:13px 15px}
+.pilar dt{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft)}
+.pilar dd{margin:4px 0 0;font-family:var(--mono);font-size:19px;font-weight:600}
+.pilar .bar{height:3px;margin-top:9px;background:var(--mist)}
+.pilar .bar i{display:block;height:100%;background:var(--vault)}
+h4.sec{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:26px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--ink)}
+.linha{display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-family:var(--mono);font-size:13px;padding:7px 0;border-bottom:1px solid var(--mist)}
+.linha .v{font-variant-numeric:tabular-nums;font-weight:500}
+.linha .why{grid-column:1/-1;font-size:11px;color:var(--ink-soft);line-height:1.4}
+.linha.neg .v{color:var(--debit)}
+.linha.tot{border-bottom:2px solid var(--ink);border-top:1px solid var(--ink);font-weight:700;margin-top:4px}
+.aviso{margin-top:14px;padding:12px 14px;border-left:3px solid var(--stamp);background:#FBF6E9;font-size:12.5px;line-height:1.5}
+.aviso.alerta{border-color:var(--debit);background:#FBEDEA}
+.chart{width:100%;height:auto;display:block;margin:6px 0 2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.legend i{display:inline-block;width:9px;height:9px;margin-right:5px;vertical-align:-1px}
+footer.pe{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-soft);line-height:1.6}
+footer.pe code{font-family:var(--mono);font-size:11.5px}
+.err{color:var(--debit);font-family:var(--mono);font-size:12.5px;margin-top:10px}
+.hidden{display:none}
+@media print{
+  body{background:#fff}
+  .step:not(#step3),.actions,.top .sub,footer.pe .no-print{display:none}
+  .fita{border:none;padding:0}
+  .step{border:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">Extrato FGTS · CLT · simulação de verbas</div>
+  <h1>Quanto você recebe se for <em>demitido</em>.</h1>
+  <p class="sub">Importe o extrato analítico do FGTS em PDF (o mesmo que a Caixa emite no app ou no site). A ferramenta lê lançamento por lançamento, pergunta o que o extrato não sabe e devolve o cálculo completo da rescisão para a data que você escolher.</p>
+</header>
+
+<section class="step" id="step1" data-done="0">
+  <header><span class="step-n">1</span><h2>Importar o extrato</h2><span class="hint" id="hint1">PDF fica no seu navegador</span></header>
+  <div class="body">
+    <label class="drop" id="drop" tabindex="0" role="button" aria-label="Selecionar arquivo PDF do extrato">
+      <input type="file" id="file" accept="application/pdf,.pdf">
+      <strong>Solte o PDF aqui ou clique para escolher</strong>
+      <span>Extrato analítico do FGTS · nada é enviado para servidor algum</span>
+    </label>
+    <p class="alt">Sem o PDF? <button type="button" id="btnTexto">Colar o texto do extrato</button> · <button type="button" id="btnManual">Preencher tudo à mão</button></p>
+    <div id="areaTexto" class="hidden">
+      <textarea id="txt" placeholder="Cole aqui o conteúdo do extrato (data, lançamento, valor, total)…"></textarea>
+      <div class="actions" style="margin-top:10px;border:none;padding:0">
+        <button class="btn" id="btnLerTexto">Ler texto colado</button>
+      </div>
+    </div>
+    <p class="err hidden" id="erro1"></p>
+    <div id="resumo" class="hidden"></div>
+  </div>
+</section>
+
+<section class="step" id="step2" data-locked="1">
+  <header><span class="step-n">2</span><h2>Responder o que o extrato não diz</h2><span class="hint" id="hint2">campos destacados dependem de você</span></header>
+  <div class="body">
+
+    <p class="legenda">
+      <span><span class="badge b-man">você informa</span>o extrato não tem esse dado</span>
+      <span><span class="badge b-conf">confira</span>estimado pelos depósitos</span>
+      <span><span class="badge b-auto">do extrato</span>lido do PDF</span>
+      <b>A barra amarela marca tudo que depende de você.</b>
+    </p>
+
+    <div class="grid">
+      <div class="field pede" data-campo="demissao">
+        <label for="fDemissao">Data da demissão (aviso) <span class="badge b-man">você informa</span></label>
+        <input type="date" id="fDemissao">
+        <small>Dia em que o aviso prévio é comunicado.</small>
+      </div>
+      <div class="field pede" data-campo="motivo">
+        <label for="fMotivo">Motivo da saída <span class="badge b-man">você informa</span></label>
+        <select id="fMotivo">
+          <option value="sjc" selected>Dispensa sem justa causa</option>
+          <option value="acordo">Acordo entre as partes (art. 484-A)</option>
+          <option value="pedido">Pedido de demissão</option>
+          <option value="jc">Dispensa por justa causa</option>
+        </select>
+      </div>
+      <div class="field" data-campo="admissao">
+        <label for="fAdmissao">Data de admissão <span class="badge b-auto">do extrato</span></label>
+        <input type="date" id="fAdmissao">
+        <small id="sAdmissao">Lida do cabeçalho do extrato.</small>
+      </div>
+      <div class="field pede" data-campo="salario">
+        <label for="fSalario">Salário base mensal (R$) <span class="badge b-conf">confira</span></label>
+        <input type="text" id="fSalario" inputmode="decimal">
+        <small id="sSalario">Estimado a partir dos depósitos (8% da remuneração).</small>
+      </div>
+      <div class="field pede" data-campo="medias">
+        <label for="fMedias">Média de variáveis (R$/mês) <span class="badge b-man">você informa</span></label>
+        <input type="text" id="fMedias" value="0,00" inputmode="decimal">
+        <small>Horas extras, adicionais e comissões habituais. Entram na base de tudo.</small>
+      </div>
+      <div class="field pede" data-campo="aviso">
+        <label for="fAviso">Aviso prévio <span class="badge b-man">você informa</span></label>
+        <select id="fAviso">
+          <option value="ind" selected>Indenizado (não trabalha)</option>
+          <option value="trab">Trabalhado (30 dias)</option>
+        </select>
+        <small id="sAviso"></small>
+      </div>
+      <div class="field pede" data-campo="feriasDias">
+        <label for="fFeriasDias">Dias de férias vencidas a gozar <span class="badge b-man">você informa</span></label>
+        <input type="number" id="fFeriasDias" value="0" min="0" max="90" step="1">
+        <small>De períodos aquisitivos já completos. Um período inteiro são 30 dias: se você já tirou 25, informe 5.</small>
+      </div>
+      <div class="field pede" data-campo="dep">
+        <label for="fDep">Dependentes para IRRF <span class="badge b-man">você informa</span></label>
+        <input type="number" id="fDep" value="0" min="0" max="20" step="1">
+        <small>Cada dependente deduz R$ 189,59 da base do imposto.</small>
+      </div>
+      <div class="field pede" data-campo="modalidade" id="boxModalidade">
+        <label for="fModalidade">Modalidade do FGTS <span class="badge b-man">você informa</span></label>
+        <select id="fModalidade">
+          <option value="rescisao" selected>Saque-rescisão (padrão)</option>
+          <option value="aniversario">Saque-aniversário</option>
+        </select>
+        <small>No saque-aniversário só a multa é liberada na demissão.</small>
+      </div>
+      <div class="field pede" data-campo="seguro" id="boxSeguro">
+        <label for="fSeguro">Pedidos anteriores de seguro-desemprego <span class="badge b-man">você informa</span></label>
+        <select id="fSeguro"><option value="1" selected>Nunca pedi (primeira vez)</option><option value="2">Já pedi uma vez</option><option value="3">Já pedi duas ou mais</option></select>
+      </div>
+      <div class="field" data-campo="taxa">
+        <label for="fTaxa">Rendimento mensal do FGTS (%) <span class="badge b-auto">do extrato</span></label>
+        <input type="text" id="fTaxa" inputmode="decimal">
+        <small id="sTaxa">Média das últimas taxas creditadas. Usada só para projetar saldo futuro.</small>
+      </div>
+      <div class="field" data-campo="saldo">
+        <label for="fSaldoFgts">Saldo total do FGTS hoje (R$) <span class="badge b-auto">do extrato</span></label>
+        <input type="text" id="fSaldoFgts" inputmode="decimal">
+        <small id="sSaldo">Último saldo do extrato. Base do saque.</small>
+      </div>
+      <div class="field" data-campo="baseMulta">
+        <label for="fBaseMulta">Base da multa hoje (R$) <span class="badge b-auto">do extrato</span></label>
+        <input type="text" id="fBaseMulta" inputmode="decimal">
+        <small id="sBaseMulta">Campo “valor para fins rescisórios” do extrato.</small>
+      </div>
+    </div>
+
+    <div class="check hidden" id="boxFeriasDobro"><input type="checkbox" id="fFeriasDobro"><label for="fFeriasDobro">Pagar essas férias em dobro — o prazo de 12 meses para concedê-las já venceu (art. 137 da CLT)</label></div>
+    <div class="check"><input type="checkbox" id="fAdiant"><label for="fAdiant">Já recebi o adiantamento (1ª parcela) do 13º deste ano</label></div>
+    <div class="check hidden" id="boxAvisoCumprido"><input type="checkbox" id="fAvisoCumprido" checked><label for="fAvisoCumprido">Vou cumprir o aviso prévio de 30 dias</label></div>
+
+    <div class="actions">
+      <button class="btn" id="btnCalc">Gerar relatório</button>
+      <button class="btn ghost" id="btnReset">Recomeçar</button>
+    </div>
+    <p class="err hidden" id="erro2"></p>
+  </div>
+</section>
+
+<section class="step hidden" id="step3">
+  <header><span class="step-n">3</span><h2>Relatório</h2><span class="hint" id="hint3"></span></header>
+  <div class="body" style="padding:20px 20px 26px">
+    <div class="fita" id="relatorio"></div>
+    <div class="actions">
+      <button class="btn ghost" id="btnPrint">Imprimir / salvar em PDF</button>
+      <button class="btn ghost" id="btnCsv">Baixar lançamentos (CSV)</button>
+    </div>
+  </div>
+</section>
+
+<footer class="pe">
+  <strong>Como os números saem daqui.</strong> Aviso prévio pela Lei 12.506/2011 (30 dias + 3 por ano completo, teto de 90).
+  13º e férias proporcionais em avos, contando meses com 15 dias ou mais. Multa rescisória do FGTS sobre o campo
+  <code>valor para fins rescisórios</code> do extrato, que exclui a distribuição de resultados. INSS pela Portaria MPS/MF 13/2026
+  (teto R$ 8.475,55). IRRF pela tabela progressiva vigente com desconto simplificado de R$ 607,20 e o redutor da Lei 15.270/2025
+  (<code>978,62 − 0,133145 × rendimento</code>, zerando em R$ 7.350). Seguro-desemprego pela tabela do MTE vigente desde 11/01/2026.
+  <br><br>
+  <span class="no-print">Isto é uma simulação para planejamento. O valor oficial é o do TRCT emitido pelo empregador, que pode divergir por
+  convenção coletiva, verbas específicas da categoria, descontos de plano de saúde, vale-transporte, adiantamentos e pensão alimentícia.
+  Confira sempre com o RH, o sindicato ou um advogado trabalhista.</span>
+</footer>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* =========================================================================
+   Extrato FGTS -> Simulador de rescisão
+   Tudo roda no navegador. Nenhum dado sai da máquina.
+   ========================================================================= */
+
+/* ---------- utilidades ---------- */
+const R2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+const BRL = n => (n < 0 ? '-' : '') + 'R$ ' + Math.abs(R2(n)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NUM = n => Math.abs(R2(n)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const semAcento = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+function brToNum(s) {
+  if (typeof s === 'number') return s;
+  if (!s) return 0;
+  let t = String(s).replace(/R\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+  const neg = /-/.test(t);
+  t = t.replace(/-/g, '');
+  const v = parseFloat(t);
+  return isNaN(v) ? 0 : (neg ? -v : v);
+}
+function dmyToDate(s) {
+  const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(s || '');
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+}
+const isoToDate = s => { const m = /(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+const dateToIso = d => d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+const dateToBr = d => d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '—';
+const addDays = (d, n) => { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; };
+const addMonths = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth() + n, 1); const ult = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate(); x.setDate(Math.min(d.getDate(), ult)); return x; };
+const DIA = 86400000;
+
+function anosCompletos(a, b) {
+  let y = b.getFullYear() - a.getFullYear();
+  const m = b.getMonth() - a.getMonth();
+  if (m < 0 || (m === 0 && b.getDate() < a.getDate())) y--;
+  return Math.max(0, y);
+}
+function mesesEntre(a, b) {
+  let m = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+  if (b.getDate() < a.getDate()) m--;
+  return Math.max(0, m);
+}
+/* dias trabalhados dentro de um intervalo qualquer */
+function diasNoIntervalo(ini, fim, jIni, jFim) {
+  const s = ini > jIni ? ini : jIni;
+  const e = fim < jFim ? fim : jFim;
+  if (e < s) return 0;
+  return Math.round((e - s) / DIA) + 1;
+}
+/* avos do 13º: meses-calendário do ano com 15+ dias trabalhados */
+function avos13(contIni, contFim, ano) {
+  let n = 0, det = [];
+  for (let m = 0; m < 12; m++) {
+    const ini = new Date(ano, m, 1), fim = new Date(ano, m + 1, 0);
+    const d = diasNoIntervalo(contIni, contFim, ini, fim);
+    if (d >= 15) { n++; det.push(m); }
+  }
+  return { n, det };
+}
+/* avos de férias: meses aquisitivos (contados da data-base) com 15+ dias */
+function avosFerias(inicioPeriodo, contFim) {
+  let n = 0;
+  for (let i = 0; i < 12; i++) {
+    const ini = addMonths(inicioPeriodo, i);
+    const fim = addDays(addMonths(inicioPeriodo, i + 1), -1);
+    if (ini > contFim) break;
+    if (diasNoIntervalo(inicioPeriodo, contFim, ini, fim) >= 15) n++;
+  }
+  return Math.min(n, 12);
+}
+/* início do período aquisitivo de férias vigente em uma data */
+function periodoAquisitivo(admissao, ref) {
+  let i = 0, ini = admissao;
+  while (addMonths(admissao, 12 * (i + 1)) <= ref) { i++; }
+  ini = addMonths(admissao, 12 * i);
+  return ini;
+}
+
+/* ---------- tabelas legais (vigentes em 2026) ---------- */
+const TAB = {
+  inss: [[1621.00, .075], [2902.84, .09], [4354.27, .12], [8475.55, .14]],
+  tetoInss: 8475.55,
+  irrf: [[2428.80, 0, 0], [2826.65, .075, 182.16], [3751.05, .15, 394.16], [4664.68, .225, 675.49], [Infinity, .275, 908.73]],
+  simplificado: 607.20,
+  dependente: 189.59,
+  redutor: { isencao: 5000.00, teto: 7350.00, a: 978.62, b: 0.133145 },
+  sd: { f1: 2222.17, f2: 3703.99, mult: 0.8, base2: 1777.74, teto: 2518.65, piso: 1621.00 }
+};
+
+function inss(base) {
+  let prev = 0, t = 0;
+  for (const [lim, al] of TAB.inss) { if (base > prev) { t += (Math.min(base, lim) - prev) * al; prev = lim; } }
+  return R2(t);
+}
+function irTabela(base) {
+  for (const [lim, al, ded] of TAB.irrf) if (base <= lim) return Math.max(0, R2(base * al - ded));
+  return 0;
+}
+/* IRRF com desconto simplificado e o redutor da Lei 15.270/2025 */
+function irrf(rendimento, inssVal, dependentes) {
+  if (rendimento <= 0) return { valor: 0, base: 0, bruto: 0, redutor: 0, deducao: 0 };
+  const legais = inssVal + dependentes * TAB.dependente;
+  const simp = Math.min(TAB.simplificado, rendimento);
+  const deducao = Math.max(legais, simp);
+  const base = Math.max(0, R2(rendimento - deducao));
+  const bruto = irTabela(base);
+  let red;
+  if (rendimento <= TAB.redutor.isencao) red = bruto;
+  else if (rendimento <= TAB.redutor.teto) red = Math.max(0, R2(TAB.redutor.a - TAB.redutor.b * rendimento));
+  else red = 0;
+  return { valor: R2(Math.max(0, bruto - red)), base, bruto, redutor: R2(Math.min(red, bruto)), deducao: R2(deducao), usouSimplificado: simp >= legais };
+}
+function parcelaSD(media) {
+  let v;
+  if (media <= TAB.sd.f1) v = media * TAB.sd.mult;
+  else if (media <= TAB.sd.f2) v = TAB.sd.base2 + (media - TAB.sd.f1) * 0.5;
+  else v = TAB.sd.teto;
+  return R2(Math.max(TAB.sd.piso, Math.min(v, TAB.sd.teto)));
+}
+function numParcelasSD(mesesTrabalhados, vez) {
+  const m = mesesTrabalhados;
+  if (vez === 1) { if (m >= 24) return 5; if (m >= 12) return 4; return 0; }
+  if (vez === 2) { if (m >= 24) return 5; if (m >= 12) return 4; if (m >= 9) return 3; return 0; }
+  if (m >= 24) return 5; if (m >= 12) return 4; if (m >= 6) return 3; return 0;
+}
+
+/* =========================================================================
+   LEITURA DO PDF
+   ========================================================================= */
+async function prepararWorker() {
+  if (!window.pdfjsLib) throw new Error('Biblioteca de leitura de PDF não carregou. Verifique a conexão e recarregue a página.');
+  const url = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  try {
+    const r = await fetch(url);
+    const b = await r.blob();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(b);
+  } catch (e) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = url;
+  }
+}
+/* devolve linhas: {y, itens:[{s,x}], texto} */
+async function lerPdf(arrayBuffer) {
+  await prepararWorker();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const linhas = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const buckets = new Map();
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      const x = it.transform[4], y = Math.round(it.transform[5]);
+      let chave = null;
+      for (const k of buckets.keys()) if (Math.abs(k - y) <= 2) { chave = k; break; }
+      if (chave === null) { chave = y; buckets.set(chave, []); }
+      buckets.get(chave).push({ s: it.str.trim(), x });
+    }
+    const ord = [...buckets.entries()].sort((a, b) => b[0] - a[0]);
+    for (const [y, itens] of ord) {
+      itens.sort((a, b) => a.x - b.x);
+      let texto = '';
+      let ultimoFim = null;
+      for (const it of itens) {
+        if (ultimoFim !== null && it.x - ultimoFim > 6) texto += '   ';
+        else if (texto) texto += ' ';
+        texto += it.s;
+        ultimoFim = it.x + it.s.length * 4.6;
+      }
+      linhas.push({ y, pag: p, itens, texto: texto.replace(/\s+$/, '') });
+    }
+  }
+  return linhas;
+}
+function linhasDeTexto(txt) {
+  return txt.split(/\r?\n/).map((l, i) => {
+    const itens = [];
+    let pos = 0;
+    l.split(/(\s{2,})/).forEach(part => {
+      if (/^\s+$/.test(part)) { pos += part.length; return; }
+      if (part) itens.push({ s: part.trim(), x: pos * 5 });
+      pos += part.length;
+    });
+    return { y: -i, pag: 1, itens, texto: l.replace(/\s+$/, '') };
+  }).filter(l => l.texto.trim());
+}
+
+/* =========================================================================
+   PARSER DO EXTRATO
+   ========================================================================= */
+function valorDoCampo(linhas, rotulo) {
+  const alvo = semAcento(rotulo);
+  for (let i = 0; i < Math.min(linhas.length, 60); i++) {
+    const it = linhas[i].itens.find(o => semAcento(o.s).startsWith(alvo));
+    if (!it) continue;
+    // procura na próxima linha um item na mesma coluna
+    for (let j = i + 1; j <= i + 2 && j < linhas.length; j++) {
+      const cand = linhas[j].itens.filter(o => Math.abs(o.x - it.x) <= 24);
+      if (cand.length) return cand[0].s;
+      // fallback: rótulo sozinho na linha (extração sem colunas)
+      if (linhas[i].itens.length === 1 && linhas[j].itens.length >= 1) {
+        const s = linhas[j].itens[0].s;
+        if (!semAcento(s).startsWith('DATA') && !semAcento(s).startsWith('N ')) return s;
+      }
+    }
+    return '';
+  }
+  return '';
+}
+
+const RE_MOV = /^(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+R\$\s*(-\s*)?([\d.]+,\d{2})(?:\s+R\$\s*(-\s*)?([\d.]+,\d{2}))?\s*$/;
+const MESES = { JANEIRO: 0, FEVEREIRO: 1, MARCO: 2, ABRIL: 3, MAIO: 4, JUNHO: 5, JULHO: 6, AGOSTO: 7, SETEMBRO: 8, OUTUBRO: 9, NOVEMBRO: 10, DEZEMBRO: 11 };
+
+function classificar(desc) {
+  const d = semAcento(desc);
+  if (/DIST\s*RESULTADO/.test(d)) return 'dist';
+  if (/SAQUE/.test(d)) return 'saque';
+  if (/DEPOSITO/.test(d)) return 'dep';
+  if (/JAM RECOLHIDO EMPRESA/.test(d)) return 'jamemp';
+  if (/CREDITO DE JAM|REGULARIZACAO CREDITO DE JAM/.test(d)) return 'jam';
+  if (/JAM|REPOSICAO|REGULARIZACAO|AC AUT|CREDITADO PELA CAIXA/.test(d)) return 'ajuste';
+  return 'outro';
+}
+
+function parseExtrato(linhas) {
+  const movs = [];
+  for (const l of linhas) {
+    const t = l.texto.replace(/\s+/g, ' ').trim();
+    const m = RE_MOV.exec(t);
+    if (!m) continue;
+    const data = dmyToDate(m[1]);
+    if (!data) continue;
+    const desc = m[2].replace(/\s+/g, ' ').trim();
+    const valor = (m[3] ? -1 : 1) * brToNum(m[4]);
+    const total = m[6] ? (m[5] ? -1 : 1) * brToNum(m[6]) : null;
+    const tipo = classificar(desc);
+    const mv = { data, desc, valor, total, tipo, atraso: /EM ATRASO/i.test(desc) };
+    const cm = /DEPOSITO(?:\s+EM\s+ATRASO)?\s+([A-ZÇÃÕ]+)\s+(\d{4})/i.exec(semAcento(desc));
+    if (cm && MESES[cm[1]] !== undefined) mv.comp = new Date(+cm[2], MESES[cm[1]], 1);
+    const tx = /JAM\s+0,(\d+)/.exec(desc);
+    if (tx) mv.taxa = parseFloat('0.' + tx[1]);
+    movs.push(mv);
+  }
+  if (!movs.length) throw new Error('Não encontrei lançamentos nesse arquivo. Confirme que é o extrato analítico do FGTS (aquele com a lista de depósitos), e não o resumo de saldo.');
+
+  const cab = {
+    nome: (linhas[0] && linhas[0].itens.length === 1 && !/FGTS|CAIXA/i.test(linhas[0].texto)) ? linhas[0].texto.trim() : '',
+    empregador: valorDoCampo(linhas, 'EMPREGADOR'),
+    admissao: dmyToDate(valorDoCampo(linhas, 'DATA DE ADMISSAO')),
+    tipoConta: valorDoCampo(linhas, 'TIPO DE CONTA'),
+    afastamento: dmyToDate(valorDoCampo(linhas, 'DATA E CODIGO DE AFASTAMENTO')),
+    baseRescisoria: brToNum(valorDoCampo(linhas, 'VALOR PARA FINS')),
+  };
+  if (!cab.admissao) {
+    const alt = /DATA DE ADMISS[ÃA]O[^\d]{0,120}?(\d{2}\/\d{2}\/\d{4})/i.exec(linhas.map(l => l.texto).join('\n'));
+    if (alt) cab.admissao = dmyToDate(alt[1]);
+  }
+  if (!cab.baseRescisoria) {
+    const alt = /FINS\s+RE[CS]IS[ÓO]RIOS[^R]{0,120}R\$\s*([\d.]+,\d{2})/i.exec(linhas.map(l => l.texto).join('\n'));
+    if (alt) cab.baseRescisoria = brToNum(alt[1]);
+  }
+  const emi = /emitido em:?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(linhas.map(l => l.texto).join('\n'));
+  cab.emissao = emi ? dmyToDate(emi[1]) : (movs[movs.length - 1] ? movs[movs.length - 1].data : new Date());
+
+  movs.sort((a, b) => a.data - b.data);
+  // extratos da Caixa às vezes reexibem o mesmo lançamento (reprocessamento);
+  // marca as repetições exatas para não somá-las duas vezes
+  const vistos = new Set();
+  for (const m of movs) {
+    const k = m.data.getTime() + '|' + m.desc + '|' + m.valor.toFixed(2);
+    if (vistos.has(k)) m.dup = true; else vistos.add(k);
+  }
+  const soma = t => R2(movs.filter(m => m.tipo === t && !m.dup).reduce((s, m) => s + m.valor, 0));
+  const depositos = movs.filter(m => m.tipo === 'dep' && !m.dup);
+  const saldoFinal = (() => { for (let i = movs.length - 1; i >= 0; i--) if (movs[i].total !== null) return movs[i].total; return R2(movs.reduce((s, m) => s + m.valor, 0)); })();
+
+  // taxa média das últimas 12 remunerações mensais
+  const taxas = movs.filter(m => m.taxa).slice(-12).map(m => m.taxa);
+  const taxaMedia = taxas.length ? taxas.reduce((a, b) => a + b, 0) / taxas.length : 0.004;
+
+  // salário estimado: mediana dos depósitos "normais" dos últimos 14 meses (exclui 13º e atrasados)
+  const ref = movs[movs.length - 1].data;
+  const recentes = depositos.filter(d => !d.atraso && (ref - d.data) / DIA <= 430).map(d => d.valor).sort((a, b) => a - b);
+  const mediana = recentes.length ? recentes[Math.floor(recentes.length / 2)] : (depositos.length ? depositos[depositos.length - 1].valor : 0);
+  const salarioEstimado = R2(mediana / 0.08);
+
+  return {
+    cab, movs,
+    stats: {
+      totalDepositado: R2(soma('dep') + soma('jamemp')),
+      totalJam: R2(soma('jam') + soma('ajuste')),
+      totalDist: soma('dist'),
+      totalSaques: soma('saque'),
+      saldoFinal, taxaMedia, salarioEstimado,
+      qtdDepositos: depositos.length,
+      duplicados: movs.filter(m => m.dup).length,
+      divergencia: R2(saldoFinal - (soma('dep') + soma('jamemp') + soma('jam') + soma('ajuste') + soma('dist') + soma('saque'))),
+      atrasos: depositos.filter(d => d.atraso).length,
+      primeiro: movs[0].data, ultimo: movs[movs.length - 1].data,
+      mesesSemDeposito: mesesSemDeposito(depositos)
+    }
+  };
+}
+function mesesSemDeposito(depositos) {
+  const comps = new Set(depositos.filter(d => d.comp).map(d => d.comp.getFullYear() * 12 + d.comp.getMonth()));
+  if (!comps.size) return [];
+  const min = Math.min(...comps), max = Math.max(...comps);
+  const faltas = [];
+  for (let k = min; k <= max; k++) if (!comps.has(k)) faltas.push(new Date(Math.floor(k / 12), k % 12, 1));
+  return faltas;
+}
+
+/* =========================================================================
+   CÁLCULO DA RESCISÃO
+   ========================================================================= */
+const REGRA = {
+  sjc: { nome: 'Dispensa sem justa causa', aviso: 1, multa: .40, saque: 1, sd: true, prop: true, aviso13: true },
+  acordo: { nome: 'Acordo entre as partes (art. 484-A)', aviso: .5, multa: .20, saque: .80, sd: false, prop: true, aviso13: true },
+  pedido: { nome: 'Pedido de demissão', aviso: 0, multa: 0, saque: 0, sd: false, prop: true, aviso13: false },
+  jc: { nome: 'Dispensa por justa causa', aviso: 0, multa: 0, saque: 0, sd: false, prop: false, aviso13: false }
+};
+
+function calcular(inp) {
+  const r = REGRA[inp.motivo];
+  const R = R2(inp.salario + inp.medias);          // remuneração base de cálculo
+  const dia = R / 30;
+  const D = inp.demissao;                           // data do aviso
+  const anos = anosCompletos(inp.admissao, D);
+  const diasAvisoLei = Math.min(30 + 3 * anos, 90);
+
+  // -------- datas do contrato
+  let ultimoTrabalhado, projetada, diasIndenizados = 0, diasTrabalhadosAviso = 0;
+  if (inp.motivo === 'jc') { ultimoTrabalhado = D; projetada = D; }
+  else if (inp.motivo === 'pedido') {
+    diasTrabalhadosAviso = inp.avisoCumprido ? 30 : 0;
+    ultimoTrabalhado = addDays(D, diasTrabalhadosAviso);
+    projetada = ultimoTrabalhado;
+  } else if (inp.aviso === 'trab') {
+    diasTrabalhadosAviso = 30;
+    diasIndenizados = Math.max(0, Math.round(diasAvisoLei * r.aviso) - 30);
+    ultimoTrabalhado = addDays(D, 30);
+    projetada = addDays(ultimoTrabalhado, diasIndenizados);
+  } else {
+    diasIndenizados = Math.round(diasAvisoLei * r.aviso);
+    ultimoTrabalhado = D;
+    projetada = addDays(D, diasIndenizados);
+  }
+
+  const P = [];   // proventos
+  const Dsc = []; // descontos
+  const add = (arr, nome, valor, why) => { if (Math.abs(valor) > 0.004) arr.push({ nome, valor: R2(valor), why }); };
+
+  // -------- saldo de salário
+  const diasSaldo = Math.min(ultimoTrabalhado.getDate(), 30);
+  const saldoSalario = R2(dia * diasSaldo);
+  add(P, 'Saldo de salário', saldoSalario,
+    `${diasSaldo} dia(s) trabalhados em ${ultimoTrabalhado.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} × ${BRL(dia)}/dia`);
+
+  // -------- aviso prévio
+  let avisoValor = 0;
+  if (diasIndenizados > 0) {
+    avisoValor = R2(dia * diasIndenizados);
+    add(P, 'Aviso prévio indenizado', avisoValor,
+      `${diasAvisoLei} dias devidos por lei (30 + 3 × ${anos} anos)` +
+      (r.aviso === .5 ? ', reduzidos à metade pelo art. 484-A' : '') +
+      (diasTrabalhadosAviso ? `, menos os 30 dias trabalhados` : '') + ` = ${diasIndenizados} dias × ${BRL(dia)}`);
+  }
+  let avisoDesconto = 0;
+  if (inp.motivo === 'pedido' && !inp.avisoCumprido) {
+    avisoDesconto = R2(R);
+    add(Dsc, 'Aviso prévio não cumprido', avisoDesconto, 'Desconto de 30 dias de salário (art. 487, §2º da CLT)');
+  }
+
+  // -------- 13º salário
+  let dec13 = 0, det13 = [];
+  if (r.prop) {
+    const anoD = projetada.getFullYear(), anoIni = inp.admissao.getFullYear();
+    const anosAlvo = [...new Set([D.getFullYear(), anoD])].filter(a => a >= anoIni);
+    for (const ano of anosAlvo) {
+      const a = avos13(inp.admissao, projetada, ano);
+      if (a.n > 0) { dec13 += R2(R / 12 * a.n); det13.push(`${a.n}/12 de ${ano}`); }
+    }
+    dec13 = R2(dec13);
+    add(P, '13º salário proporcional', dec13, `${det13.join(' + ')} × ${BRL(R / 12)} por avo` + (diasIndenizados ? ' (a projeção do aviso conta avos)' : ''));
+  }
+  let adiant13 = 0;
+  if (inp.adiantou13 && dec13 > 0) { adiant13 = R2(Math.min(R / 2, dec13)); add(Dsc, 'Adiantamento do 13º já recebido', adiant13, 'Primeira parcela paga antecipadamente'); }
+
+  // -------- férias
+  let feriasVenc = 0, tercoVenc = 0;
+  if (inp.feriasVencDias > 0) {
+    const fator = inp.feriasDobro ? 2 : 1;
+    feriasVenc = R2(dia * inp.feriasVencDias * fator);
+    tercoVenc = R2(feriasVenc / 3);
+    const rot = inp.feriasVencDias % 30 === 0 && inp.feriasVencDias >= 30
+      ? `${inp.feriasVencDias / 30} período${inp.feriasVencDias > 30 ? 's' : ''} completo${inp.feriasVencDias > 30 ? 's' : ''}`
+      : `${inp.feriasVencDias} dia${inp.feriasVencDias > 1 ? 's' : ''} restante${inp.feriasVencDias > 1 ? 's' : ''}`;
+    add(P, `Férias vencidas${fator === 2 ? ' em dobro' : ''} (${rot})`, feriasVenc,
+      `${inp.feriasVencDias} dia(s) de período aquisitivo já completo × ${BRL(dia)}/dia` + (fator === 2 ? ' × 2, pelo art. 137 da CLT' : ''));
+    add(P, 'Terço constitucional sobre vencidas', tercoVenc, '1/3 do art. 7º, XVII da CF');
+  }
+  let feriasProp = 0, tercoProp = 0, avosF = 0;
+  if (r.prop) {
+    const ini = periodoAquisitivo(inp.admissao, projetada);
+    avosF = avosFerias(ini, projetada);
+    if (avosF > 0) {
+      feriasProp = R2(R / 12 * avosF);
+      tercoProp = R2(feriasProp / 3);
+      add(P, 'Férias proporcionais', feriasProp, `${avosF}/12 avos desde ${dateToBr(ini)} × ${BRL(R / 12)}`);
+      add(P, 'Terço constitucional sobre proporcionais', tercoProp, '1/3 do art. 7º, XVII da CF');
+    }
+  }
+
+  // -------- INSS e IRRF
+  const baseMensalTributavel = R2(saldoSalario);   // aviso indenizado e férias indenizadas não sofrem incidência
+  const inssSaldo = inss(baseMensalTributavel);
+  const inss13 = dec13 > 0 ? inss(dec13) : 0;
+  add(Dsc, 'INSS sobre saldo de salário', inssSaldo, `Tabela progressiva 2026 sobre ${BRL(baseMensalTributavel)}`);
+  if (inss13) add(Dsc, 'INSS sobre 13º salário', inss13, `Cálculo separado sobre ${BRL(dec13)}`);
+
+  const irSaldo = irrf(baseMensalTributavel, inssSaldo, inp.dependentes);
+  const ir13 = dec13 > 0 ? irrf(dec13, inss13, inp.dependentes) : { valor: 0, base: 0, bruto: 0, redutor: 0 };
+  if (irSaldo.valor) add(Dsc, 'IRRF sobre saldo de salário', irSaldo.valor, `Base ${BRL(irSaldo.base)} · imposto ${BRL(irSaldo.bruto)} − redutor ${BRL(irSaldo.redutor)}`);
+  if (ir13.valor) add(Dsc, 'IRRF sobre 13º salário', ir13.valor, `Tributação exclusiva · base ${BRL(ir13.base)}`);
+
+  const totalProventos = R2(P.reduce((s, x) => s + x.valor, 0));
+  const totalDescontos = R2(Dsc.reduce((s, x) => s + x.valor, 0));
+  const liquidoRescisao = R2(totalProventos - totalDescontos);
+
+  // -------- FGTS
+  const meses = mesesEntre(inp.dataExtrato, D);
+  const depMensal = R2(R * 0.08);
+  let baseMulta = inp.baseMulta, saldo = inp.saldoAtual;
+  let cursor = new Date(inp.dataExtrato.getTime());
+  for (let i = 0; i < meses; i++) {
+    cursor = addMonths(cursor, 1);
+    baseMulta = baseMulta * (1 + inp.taxa) + depMensal;
+    saldo = saldo * (1 + inp.taxa) + depMensal;
+    if (cursor.getMonth() === 11) { baseMulta += depMensal; saldo += depMensal; }  // depósito do 13º
+  }
+  baseMulta = R2(baseMulta); saldo = R2(saldo);
+
+  const fgtsRescisorio = R2(0.08 * (saldoSalario + avisoValor + dec13));
+  const baseMultaTotal = R2(baseMulta + fgtsRescisorio);
+  const multa = R2(baseMultaTotal * r.multa);
+  const saldoTotalConta = R2(saldo + fgtsRescisorio + multa);
+  const saqueDisponivel = inp.modalidade === 'aniversario'
+    ? R2(multa)
+    : R2((saldo + fgtsRescisorio) * r.saque + multa);
+
+  // -------- seguro-desemprego
+  const mesesTrab = mesesEntre(inp.admissao, ultimoTrabalhado);
+  let sd = { parcelas: 0, valor: 0, total: 0, motivo: '' };
+  if (r.sd) {
+    const p = numParcelasSD(mesesTrab, inp.vezSD);
+    if (p === 0) sd.motivo = `Tempo de vínculo (${mesesTrab} meses) abaixo do mínimo exigido para a ${inp.vezSD}ª solicitação.`;
+    sd = { parcelas: p, valor: parcelaSD(R), total: R2(p * parcelaSD(R)), motivo: sd.motivo };
+  } else {
+    sd.motivo = inp.motivo === 'acordo' ? 'O acordo do art. 484-A não dá direito ao seguro-desemprego.'
+      : inp.motivo === 'pedido' ? 'Pedido de demissão não dá direito ao seguro-desemprego.'
+        : 'Justa causa não dá direito ao seguro-desemprego.';
+  }
+
+  return {
+    r, R, dia, anos, diasAvisoLei, diasIndenizados, diasTrabalhadosAviso, ultimoTrabalhado, projetada,
+    P, Dsc, totalProventos, totalDescontos, liquidoRescisao,
+    fgts: { meses, depMensal, baseMulta, fgtsRescisorio, baseMultaTotal, multa, saldoProjetado: saldo, saldoTotalConta, saque: saqueDisponivel, pctMulta: r.multa },
+    sd, mesesTrab, avosF, irSaldo, ir13, inssSaldo, inss13,
+    totalGeral: R2(liquidoRescisao + saqueDisponivel + sd.total)
+  };
+}
+
+/* =========================================================================
+   INTERFACE
+   ========================================================================= */
+const $ = s => document.querySelector(s);
+let EXTRATO = null;
+
+const ROTULO = { auto: 'do extrato', conferir: 'confira', manual: 'você informa' };
+function origem(campo, tipo, texto) {
+  const f = document.querySelector(`.field[data-campo="${campo}"]`);
+  if (!f) return;
+  f.classList.toggle('pede', tipo !== 'auto');
+  const b = f.querySelector('.badge');
+  if (b) { b.className = 'badge ' + { auto: 'b-auto', conferir: 'b-conf', manual: 'b-man' }[tipo]; b.textContent = texto || ROTULO[tipo]; }
+}
+function contarPendencias() {
+  const n = document.querySelectorAll('#step2 .field.pede').length;
+  $('#hint2').textContent = `${n} campo(s) dependem de você`;
+}
+
+function mostrarErro(el, msg) { const e = $(el); e.textContent = msg; e.classList.remove('hidden'); }
+function limparErro(el) { $(el).classList.add('hidden'); }
+
+/* ---------- gráfico de saldo ---------- */
+function svgSaldo(movs) {
+  const pts = movs.filter(m => m.total !== null);
+  if (pts.length < 2) return '';
+  const W = 900, H = 170, pad = { l: 6, r: 6, t: 10, b: 18 };
+  const t0 = pts[0].data.getTime(), t1 = pts[pts.length - 1].data.getTime();
+  const vmax = Math.max(...pts.map(p => p.total));
+  const X = t => pad.l + (t - t0) / (t1 - t0) * (W - pad.l - pad.r);
+  const Y = v => H - pad.b - (v / vmax) * (H - pad.t - pad.b);
+  let d = '';
+  pts.forEach((p, i) => { d += (i ? 'L' : 'M') + X(p.data.getTime()).toFixed(1) + ' ' + Y(p.total).toFixed(1); });
+  const area = d + `L${X(t1).toFixed(1)} ${H - pad.b} L${X(t0).toFixed(1)} ${H - pad.b} Z`;
+  const anos = [];
+  for (let a = new Date(t0).getFullYear() + 1; a <= new Date(t1).getFullYear(); a++) {
+    const x = X(new Date(a, 0, 1).getTime());
+    if (x > pad.l && x < W - pad.r) anos.push(`<line x1="${x.toFixed(1)}" y1="${pad.t}" x2="${x.toFixed(1)}" y2="${H - pad.b}" stroke="#C2CBC7" stroke-width=".5"/><text x="${x.toFixed(1)}" y="${H - 5}" font-size="9" fill="#4A5C63" font-family="IBM Plex Mono,monospace" text-anchor="middle">${a}</text>`);
+  }
+  const saques = movs.filter(m => m.tipo === 'saque').map(m =>
+    `<circle cx="${X(m.data.getTime()).toFixed(1)}" cy="${Y(m.total !== null ? m.total : 0).toFixed(1)}" r="3" fill="#9C3524"/>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução do saldo do FGTS">
+    ${anos.join('')}
+    <path d="${area}" fill="#1D5A4A" opacity=".10"/>
+    <path d="${d}" fill="none" stroke="#1D5A4A" stroke-width="1.6"/>
+    ${saques}
+  </svg>`;
+}
+
+function renderResumo(ex) {
+  const s = ex.stats, c = ex.cab;
+  const faltas = s.mesesSemDeposito;
+  const box = $('#resumo');
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <h4 class="sec" style="margin-top:24px">O que o extrato diz</h4>
+    <dl class="cards">
+      <div><dt>Empregador</dt><dd class="sm">${c.empregador || '—'}</dd></div>
+      <div><dt>Admissão</dt><dd class="sm">${dateToBr(c.admissao)}</dd></div>
+      <div><dt>Saldo em ${dateToBr(s.ultimo)}</dt><dd>${BRL(s.saldoFinal)}</dd></div>
+      <div><dt>Base da multa</dt><dd>${BRL(c.baseRescisoria)}</dd></div>
+    </dl>
+    <dl class="cards">
+      <div><dt>Depósitos do empregador</dt><dd class="sm">${BRL(s.totalDepositado)}</dd></div>
+      <div><dt>Juros e correção</dt><dd class="sm">${BRL(s.totalJam)}</dd></div>
+      <div><dt>Distribuição de resultados</dt><dd class="sm">${BRL(s.totalDist)}</dd></div>
+      <div><dt>Saques</dt><dd class="sm">${BRL(s.totalSaques)}</dd></div>
+    </dl>
+    ${svgSaldo(ex.movs)}
+    <p class="legend"><span><i style="background:#1D5A4A"></i>saldo acumulado</span><span><i style="background:#9C3524;border-radius:50%"></i>saque</span><span>${s.qtdDepositos} depósitos · ${s.atrasos} em atraso</span></p>
+    ${s.duplicados ? `<div class="aviso">${s.duplicados} linha(s) aparecem repetidas no extrato (reprocessamento da Caixa) e foram contadas uma vez só. Somando o resto, a conta fecha com o saldo impresso${Math.abs(s.divergencia) > 1 ? `, com diferença de ${BRL(s.divergencia)}` : ' na casa dos centavos'}.</div>` : (Math.abs(s.divergencia) > 1 ? `<div class="aviso">A soma dos lançamentos difere do saldo impresso em ${BRL(s.divergencia)}. Costuma ser lançamento reprocessado; vale conferir com a Caixa.</div>` : '')}
+    ${s.totalDist > 0 ? `<div class="aviso">A distribuição de resultados (${BRL(s.totalDist)}) entra no seu saldo, mas <strong>não</strong> na base da multa rescisória. É por isso que o valor para fins rescisórios é menor que o saldo total.</div>` : ''}
+    ${faltas.length ? `<div class="aviso alerta"><strong>${faltas.length} competência(s) sem depósito localizado:</strong> ${faltas.slice(0, 14).map(d => d.toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })).join(', ')}${faltas.length > 14 ? '…' : ''}. Pode ser depósito lançado fora de ordem, período de afastamento ou recolhimento não feito — vale conferir.</div>` : ''}
+    <details><summary>Ver os ${ex.movs.length} lançamentos classificados</summary>
+      <div class="scroll"><table><thead><tr><th>Data</th><th>Lançamento</th><th>Tipo</th><th class="num">Valor</th><th class="num">Saldo</th></tr></thead><tbody>
+      ${ex.movs.map(m => `<tr${m.dup ? ' style="opacity:.5"' : ''}><td>${dateToBr(m.data)}</td><td>${m.desc}</td><td><span class="tag ${{ dep: 't-dep', jam: 't-jam', jamemp: 't-jam', saque: 't-saq', dist: 't-dist' }[m.tipo] || 't-adj'}">${{ dep: 'depósito', jam: 'juros', jamemp: 'juros', saque: 'saque', dist: 'resultado', ajuste: 'ajuste' }[m.tipo] || 'outro'}</span>${m.dup ? ' <span class="tag t-adj">repetido</span>' : ''}</td><td class="num">${BRL(m.valor)}</td><td class="num">${m.total === null ? '—' : BRL(m.total)}</td></tr>`).join('')}
+      </tbody></table></div>
+    </details>`;
+}
+
+function preencherFormulario(ex) {
+  const s = ex.stats, c = ex.cab;
+  if (c.admissao) {
+    $('#fAdmissao').value = dateToIso(c.admissao);
+    $('#sAdmissao').textContent = `Lida do cabeçalho: ${dateToBr(c.admissao)}.`;
+    origem('admissao', 'auto');
+  } else {
+    $('#sAdmissao').textContent = 'Não veio no extrato — preencha à mão.';
+    origem('admissao', 'manual');
+  }
+  if (s.salarioEstimado > 0) {
+    $('#fSalario').value = NUM(s.salarioEstimado);
+    $('#sSalario').textContent = `Estimado em ${BRL(s.salarioEstimado)} pela mediana dos depósitos (8%). Corrija se o seu salário for outro — é o número que mais mexe no resultado.`;
+    origem('salario', 'conferir');
+  } else origem('salario', 'manual');
+  $('#fTaxa').value = (s.taxaMedia * 100).toFixed(4).replace('.', ',');
+  $('#sTaxa').textContent = `Média das últimas taxas creditadas no seu extrato (${(s.taxaMedia * 12 * 100).toFixed(2).replace('.', ',')}% ao ano).`;
+  $('#fSaldoFgts').value = NUM(s.saldoFinal);
+  $('#fBaseMulta').value = NUM(c.baseRescisoria || s.saldoFinal);
+  if (c.baseRescisoria) { $('#sBaseMulta').textContent = `Campo “valor para fins rescisórios”, posição de ${dateToBr(c.emissao)}.`; origem('baseMulta', 'auto'); }
+  else { $('#sBaseMulta').textContent = 'Não localizado no extrato — está usando o saldo total. Confira.'; origem('baseMulta', 'conferir'); }
+  origem('taxa', 'auto'); origem('saldo', 'auto');
+  const hoje = new Date();
+  $('#fDemissao').value = dateToIso(hoje > s.ultimo ? hoje : s.ultimo);
+  atualizarAviso();
+  $('#step1').dataset.done = '1';
+  $('#step2').dataset.locked = '0';
+  contarPendencias();
+  $('#hint1').textContent = `${ex.movs.length} lançamentos lidos`;
+}
+
+function atualizarAviso() {
+  const adm = isoToDate($('#fAdmissao').value), dem = isoToDate($('#fDemissao').value);
+  if (!adm || !dem) return;
+  const a = anosCompletos(adm, dem), d = Math.min(30 + 3 * a, 90);
+  $('#sAviso').textContent = `Você tem direito a ${d} dias (${a} anos completos de casa).`;
+}
+
+function lerFormulario() {
+  const adm = isoToDate($('#fAdmissao').value), dem = isoToDate($('#fDemissao').value);
+  if (!adm) throw new Error('Informe a data de admissão.');
+  if (!dem) throw new Error('Informe a data prevista da demissão.');
+  if (dem <= adm) throw new Error('A data da demissão precisa ser posterior à admissão.');
+  const sal = brToNum($('#fSalario').value);
+  if (sal <= 0) throw new Error('Informe o salário base mensal.');
+  return {
+    admissao: adm, demissao: dem,
+    motivo: $('#fMotivo').value,
+    salario: sal,
+    medias: brToNum($('#fMedias').value),
+    aviso: $('#fAviso').value,
+    avisoCumprido: $('#fAvisoCumprido').checked,
+    feriasVencDias: Math.max(0, parseInt($('#fFeriasDias').value, 10) || 0),
+    feriasDobro: $('#fFeriasDobro').checked,
+    dependentes: parseInt($('#fDep').value, 10) || 0,
+    adiantou13: $('#fAdiant').checked,
+    modalidade: $('#fModalidade').value,
+    vezSD: parseInt($('#fSeguro').value, 10),
+    taxa: brToNum($('#fTaxa').value) / 100,
+    baseMulta: brToNum($('#fBaseMulta').value),
+    saldoAtual: brToNum($('#fSaldoFgts').value) || brToNum($('#fBaseMulta').value),
+    dataExtrato: EXTRATO ? EXTRATO.cab.emissao : new Date()
+  };
+}
+
+function barra(v, max) { return `<div class="bar"><i style="width:${Math.max(2, Math.min(100, v / max * 100)).toFixed(1)}%"></i></div>`; }
+
+function svgComposicao(c) {
+  const itens = c.P.map(p => ({ n: p.nome, v: p.valor }));
+  const total = itens.reduce((s, i) => s + i.v, 0);
+  if (!total) return '';
+  const cores = ['#1D5A4A', '#2F7A63', '#4E9A82', '#B8860F', '#D3A93F', '#3B6A86', '#6E8FA6'];
+  const W = 900, H = 26;
+  let x = 0, barras = '', leg = '';
+  itens.forEach((it, i) => {
+    const w = it.v / total * W;
+    barras += `<rect x="${x.toFixed(1)}" y="0" width="${Math.max(w - 1.5, 1).toFixed(1)}" height="${H}" fill="${cores[i % cores.length]}"/>`;
+    leg += `<span><i style="background:${cores[i % cores.length]}"></i>${it.n} · ${(it.v / total * 100).toFixed(0)}%</span>`;
+    x += w;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" style="height:26px" role="img" aria-label="Composição das verbas"><rect width="${W}" height="${H}" fill="#EFF2F0"/>${barras}</svg><p class="legend">${leg}</p>`;
+}
+
+function premissas() {
+  const campos = [...document.querySelectorAll('#step2 .field[data-campo]')];
+  const linhas = campos.map(f => {
+    const el = f.querySelector('input,select');
+    if (!el || f.classList.contains('hidden') || el.disabled) return '';
+    let v = el.value;
+    if (el.tagName === 'SELECT') v = el.options[el.selectedIndex].text;
+    else if (el.type === 'date') v = dateToBr(isoToDate(v));
+    const rot = f.querySelector('label').textContent.replace(/\s*(do extrato|confira|você informa)\s*$/i, '').trim();
+    const b = f.querySelector('.badge');
+    const tipo = b ? b.textContent : '';
+    return `<tr><td>${rot}</td><td class="num">${v || '—'}</td><td><span class="tag ${b && b.classList.contains('b-auto') ? 't-dep' : 't-dist'}">${tipo}</span></td></tr>`;
+  }).join('');
+  const extras = [
+    ['Adiantamento do 13º já recebido', $('#fAdiant').checked ? 'sim' : 'não'],
+    ['Férias vencidas em dobro', $('#fFeriasDobro').checked ? 'sim' : 'não']
+  ].map(([a, b]) => `<tr><td>${a}</td><td class="num">${b}</td><td><span class="tag t-dist">você informa</span></td></tr>`).join('');
+  return `<table><thead><tr><th>Dado</th><th class="num">Valor usado</th><th>Origem</th></tr></thead><tbody>${linhas}${extras}</tbody></table>`;
+}
+
+function renderRelatorio(c, inp) {
+  const max = Math.max(c.liquidoRescisao, c.fgts.saque, c.sd.total, 1);
+  const linha = (x, neg) => `<div class="linha ${neg ? 'neg' : ''}"><span>${x.nome}</span><span class="v">${neg ? '−' : ''}${BRL(x.valor)}</span>${x.why ? `<span class="why">${x.why}</span>` : ''}</div>`;
+  const el = $('#relatorio');
+  el.innerHTML = `
+  <div class="carimbo">simulação<br>não é o TRCT</div>
+  <div class="rec-head">
+    ${EXTRATO && EXTRATO.cab.nome ? `<p style="margin-bottom:6px">${EXTRATO.cab.nome}${EXTRATO.cab.empregador ? ' · ' + EXTRATO.cab.empregador : ''}</p>` : ''}
+    <h3>${c.r.nome}</h3>
+    <p>Desligamento em ${dateToBr(inp.demissao)} · último dia trabalhado ${dateToBr(c.ultimoTrabalhado)}${c.diasIndenizados ? ` · contrato projetado até ${dateToBr(c.projetada)}` : ''}<br>
+    ${c.anos} anos e ${Math.floor((c.mesesTrab % 12))} meses de casa · remuneração de cálculo ${BRL(c.R)}</p>
+  </div>
+
+  <div class="total"><span class="big">${BRL(c.totalGeral)}</span><span class="lbl">total a receber</span></div>
+
+  <dl class="pilar">
+    <div><dt>Rescisão líquida</dt><dd>${BRL(c.liquidoRescisao)}</dd>${barra(c.liquidoRescisao, max)}</div>
+    <div><dt>FGTS liberado para saque</dt><dd>${BRL(c.fgts.saque)}</dd>${barra(c.fgts.saque, max)}</div>
+    <div><dt>Seguro-desemprego</dt><dd>${BRL(c.sd.total)}</dd>${barra(c.sd.total, max)}</div>
+  </dl>
+
+  <h4 class="sec">Composição dos proventos</h4>
+  ${svgComposicao(c)}
+
+  <h4 class="sec">Verbas rescisórias</h4>
+  ${c.P.map(x => linha(x, false)).join('')}
+  <div class="linha tot"><span>Total de proventos</span><span class="v">${BRL(c.totalProventos)}</span></div>
+  ${c.Dsc.length ? `<h4 class="sec">Descontos</h4>${c.Dsc.map(x => linha(x, true)).join('')}` : ''}
+  <div class="linha tot"><span>Líquido da rescisão</span><span class="v">${BRL(c.liquidoRescisao)}</span></div>
+  ${c.diasIndenizados ? `<div class="aviso">Aviso prévio indenizado e férias indenizadas não sofrem INSS nem IRRF. Por isso o desconto incide praticamente só sobre o saldo de salário e o 13º.</div>` : ''}
+
+  <h4 class="sec">FGTS</h4>
+  ${c.fgts.meses > 0 ? `<div class="linha"><span>Depósitos projetados até a demissão</span><span class="v">${c.fgts.meses} meses</span><span class="why">${BRL(c.fgts.depMensal)}/mês (8% da remuneração) mais rendimento de ${(inp.taxa * 100).toFixed(4).replace('.', ',')}% ao mês, a partir da posição do extrato.</span></div>` : ''}
+  <div class="linha"><span>Saldo estimado na data da saída</span><span class="v">${BRL(c.fgts.saldoProjetado)}</span></div>
+  <div class="linha"><span>FGTS sobre as verbas rescisórias (8%)</span><span class="v">${BRL(c.fgts.fgtsRescisorio)}</span><span class="why">Incide sobre saldo de salário, aviso indenizado e 13º; não incide sobre férias.</span></div>
+  ${c.fgts.pctMulta > 0 ? `<div class="linha"><span>Multa rescisória (${(c.fgts.pctMulta * 100).toFixed(0)}%)</span><span class="v">${BRL(c.fgts.multa)}</span><span class="why">${(c.fgts.pctMulta * 100).toFixed(0)}% sobre ${BRL(c.fgts.baseMultaTotal)} — base do extrato projetada, sem a distribuição de resultados.</span></div>` : `<div class="linha"><span>Multa rescisória</span><span class="v">${BRL(0)}</span><span class="why">Não devida nesta modalidade.</span></div>`}
+  <div class="linha tot"><span>Disponível para saque</span><span class="v">${BRL(c.fgts.saque)}</span></div>
+  ${inp.modalidade === 'aniversario' && c.fgts.pctMulta > 0 ? `<div class="aviso alerta">No saque-aniversário você recebe agora só a multa. O restante (${BRL(c.fgts.saldoTotalConta - c.fgts.multa)}) fica na conta e sai nos saques anuais, salvo se você pedir o retorno à modalidade saque-rescisão — que só vale depois de 25 meses.</div>` : ''}
+  ${inp.motivo === 'pedido' || inp.motivo === 'jc' ? `<div class="aviso alerta">Nesta modalidade o FGTS não é liberado. O saldo de ${BRL(c.fgts.saldoProjetado)} continua na conta.</div>` : ''}
+
+  <h4 class="sec">Seguro-desemprego</h4>
+  ${c.sd.parcelas ? `<div class="linha"><span>${c.sd.parcelas} parcelas de ${BRL(c.sd.valor)}</span><span class="v">${BRL(c.sd.total)}</span><span class="why">Faixa da tabela do MTE sobre a média salarial de ${BRL(c.R)}, com ${c.mesesTrab} meses de vínculo na ${['', 'primeira', 'segunda', 'terceira ou posterior'][inp.vezSD]} solicitação.</span></div>`
+      : `<div class="linha"><span>Sem direito</span><span class="v">${BRL(0)}</span><span class="why">${c.sd.motivo}</span></div>`}
+
+  <h4 class="sec">O que veio de você e o que veio do extrato</h4>
+  ${premissas()}
+
+  <h4 class="sec">Memória de cálculo</h4>
+  <div class="linha"><span>Aviso prévio devido</span><span class="v">${c.diasAvisoLei} dias</span><span class="why">30 dias + 3 por ano completo (${c.anos}), limitado a 90 — Lei 12.506/2011.</span></div>
+  <div class="linha"><span>INSS retido</span><span class="v">${BRL(c.inssSaldo + c.inss13)}</span><span class="why">Alíquotas progressivas de 7,5% a 14%, teto de contribuição sobre ${BRL(TAB.tetoInss)}.</span></div>
+  <div class="linha"><span>IRRF retido</span><span class="v">${BRL(c.irSaldo.valor + c.ir13.valor)}</span><span class="why">Dedução aplicada: ${BRL(c.irSaldo.deducao || 0)} (${c.irSaldo.usouSimplificado ? 'desconto simplificado' : 'INSS e dependentes'}). Redutor da Lei 15.270/2025 aplicado quando o rendimento fica até R$ 7.350.</span></div>
+  <div class="linha"><span>Base da multa na data da saída</span><span class="v">${BRL(c.fgts.baseMultaTotal)}</span><span class="why">Valor para fins rescisórios do extrato + projeção + FGTS do mês da rescisão.</span></div>
+
+  <div class="aviso" style="margin-top:22px">Emitido em ${dateToBr(new Date())} a partir do extrato com posição de ${dateToBr(inp.dataExtrato)}. Confira o TRCT oficial antes de assinar: convenção coletiva, verbas da categoria, vale-transporte, plano de saúde e pensão alimentícia podem mudar o resultado.</div>`;
+  $('#step3').classList.remove('hidden');
+  $('#hint3').textContent = dateToBr(inp.demissao);
+  $('#step3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------- eventos ---------- */
+function bind() {
+  const drop = $('#drop'), file = $('#file');
+  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => { if (ev.dataTransfer.files[0]) processarArquivo(ev.dataTransfer.files[0]); });
+  drop.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); file.click(); } });
+  file.addEventListener('change', () => { if (file.files[0]) processarArquivo(file.files[0]); });
+
+  $('#btnTexto').addEventListener('click', () => $('#areaTexto').classList.toggle('hidden'));
+  $('#btnLerTexto').addEventListener('click', () => {
+    try {
+      limparErro('#erro1');
+      EXTRATO = parseExtrato(linhasDeTexto($('#txt').value));
+      renderResumo(EXTRATO); preencherFormulario(EXTRATO);
+    } catch (e) { mostrarErro('#erro1', e.message); }
+  });
+  $('#btnManual').addEventListener('click', () => {
+    EXTRATO = null;
+    $('#step2').dataset.locked = '0';
+    $('#sSalario').textContent = 'Informe o salário base do contrato.';
+    $('#sBaseMulta').textContent = 'Some todos os depósitos corrigidos, ou copie o campo “valor para fins rescisórios” do extrato.';
+    $('#fTaxa').value = '0,4000';
+    $('#fSaldoFgts').value = '';
+    $('#fBaseMulta').value = '';
+    $('#fSalario').value = '';
+    ['admissao', 'salario', 'taxa', 'saldo', 'baseMulta'].forEach(k => origem(k, 'manual'));
+    $('#sSaldo').textContent = 'Saldo total da sua conta vinculada hoje.';
+    $('#sBaseMulta').textContent = 'Some os depósitos corrigidos ou copie o “valor para fins rescisórios” do extrato.';
+    $('#sTaxa').textContent = 'Rendimento mensal aproximado (3% ao ano + TR).';
+    contarPendencias();
+    $('#fDemissao').value = dateToIso(new Date());
+    $('#step2').scrollIntoView({ behavior: 'smooth' });
+  });
+  ['#fAdmissao', '#fDemissao'].forEach(s => $(s).addEventListener('change', atualizarAviso));
+  $('#fFeriasDias').addEventListener('input', () => {
+    const n = parseInt($('#fFeriasDias').value, 10) || 0;
+    $('#boxFeriasDobro').classList.toggle('hidden', n <= 0);
+    if (n <= 0) $('#fFeriasDobro').checked = false;
+  });
+  const ajustarMotivo = () => {
+    const v = $('#fMotivo').value;
+    $('#fAviso').disabled = (v === 'jc' || v === 'pedido');
+    $('#boxAvisoCumprido').classList.toggle('hidden', v !== 'pedido');
+    $('#boxModalidade').classList.toggle('hidden', v === 'jc' || v === 'pedido');
+    $('#boxSeguro').classList.toggle('hidden', v !== 'sjc');
+  };
+  $('#fMotivo').addEventListener('change', ajustarMotivo);
+  ajustarMotivo();
+  $('#btnCalc').addEventListener('click', () => {
+    try {
+      limparErro('#erro2');
+      const inp = lerFormulario();
+      renderRelatorio(calcular(inp), inp);
+    } catch (e) { mostrarErro('#erro2', e.message); }
+  });
+  $('#btnReset').addEventListener('click', () => location.reload());
+  $('#btnPrint').addEventListener('click', () => window.print());
+  $('#btnCsv').addEventListener('click', () => {
+    if (!EXTRATO) return;
+    const linhas = [['data', 'lancamento', 'tipo', 'valor', 'total']].concat(
+      EXTRATO.movs.map(m => [dateToBr(m.data), '"' + m.desc + '"', m.tipo, String(m.valor).replace('.', ','), m.total === null ? '' : String(m.total).replace('.', ',')]));
+    const blob = new Blob(['\ufeff' + linhas.map(l => l.join(';')).join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'lancamentos-fgts.csv'; a.click();
+  });
+}
+
+async function processarArquivo(f) {
+  limparErro('#erro1');
+  $('#hint1').textContent = 'lendo…';
+  try {
+    if (!/pdf$/i.test(f.name) && f.type !== 'application/pdf') throw new Error('Escolha um arquivo PDF.');
+    const buf = await f.arrayBuffer();
+    const linhas = await lerPdf(buf);
+    EXTRATO = parseExtrato(linhas);
+    renderResumo(EXTRATO);
+    preencherFormulario(EXTRATO);
+  } catch (e) {
+    $('#hint1').textContent = 'não deu certo';
+    mostrarErro('#erro1', e.message || 'Não consegui ler esse PDF. Tente colar o texto do extrato.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bind);
+
+
+</script>
+</body>
+</html>
