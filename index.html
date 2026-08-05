@@ -112,7 +112,12 @@ summary{font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--vault)
 .pilar dd{margin:4px 0 0;font-family:var(--mono);font-size:19px;font-weight:600}
 .pilar .bar{height:3px;margin-top:9px;background:var(--mist)}
 .pilar .bar i{display:block;height:100%;background:var(--vault)}
-.pilar .split{margin:7px 0 0;font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);line-height:1.4}
+.pilar .split{margin:12px 0 0;padding-top:11px;border-top:1px dashed var(--line)}
+.pilar .split-bar{display:flex;height:7px;border-radius:2px;overflow:hidden;background:var(--mist)}
+.pilar .split-bar i{display:block;height:100%}
+.pilar .split-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.pilar .split-row i.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:-1px;flex:none}
+.pilar .split-row b{color:var(--ink);font-weight:700;font-size:13px}
 h4.sec{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:26px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--ink)}
 .linha{display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-family:var(--mono);font-size:13px;padding:7px 0;border-bottom:1px solid var(--mist)}
 .linha .v{font-variant-numeric:tabular-nums;font-weight:500}
@@ -973,6 +978,17 @@ function lerFormulario() {
 
 function barra(v, max) { return `<div class="bar"><i style="width:${Math.max(2, Math.min(100, v / max * 100)).toFixed(1)}%"></i></div>`; }
 
+function splitSaque(fgts) {
+  const total = fgts.saldoLiberado + fgts.multa;
+  const pctSaldo = total > 0 ? Math.max(0, Math.min(100, fgts.saldoLiberado / total * 100)) : 0;
+  const pctMulta = 100 - pctSaldo;
+  return `<div class="split">
+    <div class="split-bar"><i style="width:${pctSaldo.toFixed(1)}%;background:var(--vault)"></i><i style="width:${pctMulta.toFixed(1)}%;background:var(--stamp)"></i></div>
+    <div class="split-row"><span><i class="dot" style="background:var(--vault)"></i>Saldo</span><b>${BRL(fgts.saldoLiberado)}</b></div>
+    <div class="split-row"><span><i class="dot" style="background:var(--stamp)"></i>Multa</span><b>${BRL(fgts.multa)}</b></div>
+  </div>`;
+}
+
 function svgComposicao(c) {
   const itens = c.P.map(p => ({ n: p.nome, v: p.valor }));
   const total = itens.reduce((s, i) => s + i.v, 0);
@@ -1026,7 +1042,7 @@ function renderRelatorio(c, inp) {
 
   <dl class="pilar">
     <div><dt>Rescisão líquida</dt><dd>${BRL(c.liquidoRescisao)}</dd>${barra(c.liquidoRescisao, max)}</div>
-    <div><dt>FGTS liberado para saque</dt><dd>${BRL(c.fgts.saque)}</dd>${barra(c.fgts.saque, max)}<p class="split">${BRL(c.fgts.saldoLiberado)} saldo + ${BRL(c.fgts.multa)} multa</p></div>
+    <div><dt>FGTS liberado para saque</dt><dd>${BRL(c.fgts.saque)}</dd>${barra(c.fgts.saque, max)}${splitSaque(c.fgts)}</div>
     <div><dt>Seguro-desemprego</dt><dd>${BRL(c.sd.total)}</dd>${barra(c.sd.total, max)}</div>
   </dl>
 
