@@ -295,10 +295,14 @@ footer.pe code{font-family:var(--mono);font-size:11.5px}
         <small>Quem pede demissão deve 30 dias de aviso, sem o acréscimo por ano de casa.</small>
       </div>
       <div class="field pede" data-campo="feriasDias">
-        <label for="fFeriasDias">Dias de férias vencidas a gozar <span class="badge b-man">você informa</span></label>
+        <label for="fFeriasDias">Dias de férias vencidas a gozar hoje <span class="badge b-man">você informa</span></label>
         <input type="number" id="fFeriasDias" value="0" min="0" max="90" step="1" inputmode="numeric">
-        <small>De períodos aquisitivos já completos na data da demissão. Um período inteiro são 30 dias: se você já tirou 25, informe 5. Período que se completa durante o aviso entra sozinho no cálculo.</small>
-        <div class="check hidden" id="boxFeriasDobro"><input type="checkbox" id="fFeriasDobro"><label for="fFeriasDobro">Pagar em dobro — o prazo de 12 meses para concedê-las já venceu (art. 137 da CLT)</label></div>
+        <small>Só de períodos aquisitivos que já estão completos hoje. Um período inteiro são 30 dias: se você já tirou 25, informe 5. Os períodos que ainda vão se completar até a saída — inclusive durante o aviso — entram sozinhos no cálculo.</small>
+        <div class="check hidden" id="boxFeriasDobro"><input type="checkbox" id="fFeriasDobro"><label for="fFeriasDobro">Pagar em dobro — o prazo de 12 meses para concedê-las já venceu ou vai vencer antes da saída (art. 137 da CLT)</label></div>
+        <div class="aviso hidden" id="boxFeriasFuturas" style="margin-top:10px">
+          <span id="txtFeriasFuturas"></span>
+          <div class="check" style="margin-top:8px"><input type="checkbox" id="fFeriasTirar"><label for="fFeriasTirar">Vou tirar essas férias antes de sair — não somar</label></div>
+        </div>
       </div>
       <div class="field pede" data-campo="decimo">
         <label for="f13">13º do ano da demissão <span class="badge b-man">você informa</span></label>
@@ -473,6 +477,18 @@ function avosFerias(inicioPeriodo, contFim) {
   }
   return Math.min(n, 12);
 }
+/* períodos aquisitivos que se fecham depois de `de` e até `ate`, com o fim do prazo
+   de 12 meses para a empresa concedê-los (art. 134 da CLT) */
+function periodosFechados(admissao, de, ate) {
+  const out = [];
+  for (let k = 0; k < 100; k++) {
+    const fim = addDays(addMonths(admissao, 12 * (k + 1)), -1);
+    if (fim > ate) break;
+    if (fim > de) out.push({ ini: addMonths(admissao, 12 * k), fim, fimConcessivo: addDays(addMonths(admissao, 12 * (k + 2)), -1) });
+  }
+  return out;
+}
+const hojeData = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
 /* início do período aquisitivo de férias vigente em uma data */
 function periodoAquisitivo(admissao, ref) {
   let i = 0, ini = admissao;
@@ -855,18 +871,29 @@ function calcular(inp) {
     add(P, 'Terço constitucional sobre vencidas', R2(feriasVenc / 3), '1/3 do art. 7º, XVII da CF');
   }
   let avosF = 0, feriasInt = 0;
+  const iniProp = periodoAquisitivo(adm, projetada);   // período ainda aberto no fim do contrato
+  // Períodos que se fecham entre hoje e o fim do contrato não cabem no campo "férias vencidas"
+  // (que descreve a situação de hoje) e entram por inteiro — inclusive na justa causa, porque
+  // período completo é sempre devido:
+  // · fechado durante o aviso (trabalhado ou projetado — art. 487, §1º): não há como gozá-lo;
+  // · fechado antes da saída: entra, a menos que a pessoa diga que vai tirá-lo antes de sair.
+  //   Se o prazo de 12 meses para concedê-lo vencer antes da saída, é pago em dobro (art. 137).
+  const refFerias = inp.hoje && inp.hoje < D ? inp.hoje : D;
+  for (const per of periodosFechados(adm, refFerias, addDays(iniProp, -1))) {
+    const noAviso = per.fim > D;
+    if (!noAviso && inp.tirarFeriasFuturas) continue;
+    const dobro = !noAviso && ultimoTrabalhado > per.fimConcessivo;
+    const v = R2(R * (dobro ? 2 : 1));
+    const rot = `${per.ini.getFullYear()}/${per.fim.getFullYear()}`;
+    feriasInt = R2(feriasInt + v);
+    add(P, `Férias integrais${dobro ? ' em dobro' : ''} ${rot}`, v,
+      `Período de ${dateToBr(per.ini)} a ${dateToBr(per.fim)}, ` +
+      (noAviso ? 'completado durante o aviso prévio' : 'completado entre hoje e a saída — considera que você não vai tirar essas férias até sair') +
+      ` · 30 dias × ${BRL(dia)}` + (dobro ? ` × 2: o prazo para concedê-las vence em ${dateToBr(per.fimConcessivo)}, antes da saída (art. 137 da CLT)` : ''));
+    add(P, `Terço constitucional sobre integrais ${rot}`, R2(v / 3), '1/3 do art. 7º, XVII da CF');
+  }
   if (r.prop) {
-    const ini = periodoAquisitivo(adm, projetada);
-    // Período aquisitivo que se fecha DEPOIS da data da demissão, durante o aviso (trabalhado
-    // ou projetado — art. 487, §1º): na data da demissão ele ainda não estava completo, então
-    // não cabe no campo "férias vencidas", mas é devido por inteiro.
-    const fimAnterior = addDays(ini, -1);
-    if (ini > adm && fimAnterior > D) {
-      feriasInt = R2(R);
-      add(P, 'Férias integrais (período fechado no aviso)', feriasInt,
-        `Período de ${dateToBr(periodoAquisitivo(adm, fimAnterior))} a ${dateToBr(fimAnterior)}, completado durante o aviso prévio · 12/12 × ${BRL(R / 12)}`);
-      add(P, 'Terço constitucional sobre integrais', R2(feriasInt / 3), '1/3 do art. 7º, XVII da CF');
-    }
+    const ini = iniProp;
     avosF = avosFerias(ini, projetada);
     if (avosF > 0) {
       const feriasProp = R2(R / 12 * avosF);
@@ -1156,6 +1183,15 @@ function atualizarAviso() {
   if (!adm || !dem) return;
   const a = anosCompletos(adm, dem), d = Math.min(30 + 3 * a, 90);
   $('#sAviso').textContent = `Você tem direito a ${d} dias (${a} anos completos de casa).`;
+  // períodos de férias que se completam entre hoje e a data da demissão escolhida
+  const futuros = dem > adm ? periodosFechados(adm, hojeData(), dem) : [];
+  $('#boxFeriasFuturas').classList.toggle('hidden', !futuros.length);
+  if (futuros.length) {
+    const lista = futuros.map(p => `${dateToBr(p.ini)} a ${dateToBr(p.fim)}`).join(' e ');
+    $('#txtFeriasFuturas').textContent = futuros.length === 1
+      ? `Até a data da demissão escolhida fecha o período aquisitivo de ${lista}: são mais 30 dias de férias, que entram sozinhos no cálculo. Não some esses dias no campo acima.`
+      : `Até a data da demissão escolhida fecham ${futuros.length} períodos aquisitivos (${lista}): cada um são mais 30 dias de férias, que entram sozinhos no cálculo. Não some esses dias no campo acima.`;
+  }
 }
 
 function lerFormulario() {
@@ -1176,6 +1212,8 @@ function lerFormulario() {
     avisoPedido: $('#fAvisoPedido').value,
     feriasVencDias: Math.max(0, parseInt($('#fFeriasDias').value, 10) || 0),
     feriasDobro: $('#fFeriasDobro').checked,
+    tirarFeriasFuturas: !$('#boxFeriasFuturas').classList.contains('hidden') && $('#fFeriasTirar').checked,
+    hoje: hojeData(),
     dependentes: parseInt($('#fDep').value, 10) || 0,
     status13: $('#f13').value,
     modalidade: $('#fModalidade').value,
@@ -1230,8 +1268,10 @@ function premissas() {
     const tipo = b ? b.textContent : '';
     return `<tr><td>${escapeHtml(rot)}</td><td class="num">${escapeHtml(v) || '—'}</td><td><span class="tag ${b && b.classList.contains('b-auto') ? 't-dep' : 't-dist'}">${escapeHtml(tipo)}</span></td></tr>`;
   }).join('');
-  const extras = $('#fFeriasDobro').checked || parseInt($('#fFeriasDias').value, 10) > 0
-    ? `<tr><td>Férias vencidas em dobro</td><td class="num">${$('#fFeriasDobro').checked ? 'sim' : 'não'}</td><td><span class="tag t-dist">você informa</span></td></tr>` : '';
+  const linhaExtra = (a, b) => `<tr><td>${a}</td><td class="num">${b}</td><td><span class="tag t-dist">você informa</span></td></tr>`;
+  let extras = '';
+  if ($('#fFeriasDobro').checked || parseInt($('#fFeriasDias').value, 10) > 0) extras += linhaExtra('Férias vencidas em dobro', $('#fFeriasDobro').checked ? 'sim' : 'não');
+  if (!$('#boxFeriasFuturas').classList.contains('hidden')) extras += linhaExtra('Férias que vencem até a saída', $('#fFeriasTirar').checked ? 'vou tirar antes' : 'entram no cálculo');
   return `<div class="tbl"><table><thead><tr><th>Dado</th><th class="num">Valor usado</th><th>Origem</th></tr></thead><tbody>${linhas}${extras}</tbody></table></div>`;
 }
 
