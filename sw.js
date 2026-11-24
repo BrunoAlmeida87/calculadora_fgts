@@ -4,7 +4,7 @@
    - Bibliotecas e fontes de CDN: cache primeiro (as URLs têm versão fixa).
    - Recebe PDFs enviados pelo menu "Compartilhar" do Android (share_target).
    Ao mudar arquivos do app, aumente VERSAO para renovar o cache. */
-const VERSAO = 'v3';
+const VERSAO = 'v4';
 const CACHE_APP = 'rescisao-fgts-app-' + VERSAO;
 const CACHE_CDN = 'rescisao-fgts-cdn-v1';
 const CACHE_COMPARTILHADO = 'rescisao-fgts-compartilhado';

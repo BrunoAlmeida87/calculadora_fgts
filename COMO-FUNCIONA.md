@@ -76,7 +76,7 @@ Campos que dependem de você:
 - **Média de variáveis** — horas extras, adicionais e comissões habituais. Entram na base de aviso, 13º e férias. Se o salário veio estimado do extrato, só preencha aqui se trocar o salário pelo valor da carteira, para não contar duas vezes.
 - **Aviso prévio** — indenizado ou trabalhado (dispensa e acordo).
 - **Aviso prévio do pedido** — só no pedido de demissão: cumprir os 30 dias, não cumprir (a empresa desconta 30 dias) ou a empresa dispensou o cumprimento (sem desconto).
-- **Dias de férias vencidas a gozar** — em dias, não em períodos, contando só os períodos já completos **na data da demissão**. Um período inteiro são 30 dias; se você tirou 25 e sobraram 5, informe 5. O período que se fecha durante o aviso entra sozinho no cálculo (veja *Férias*). Quando o campo é maior que zero, aparece logo abaixo a opção de pagamento em dobro, para o caso de o prazo de concessão de 12 meses já ter vencido (art. 137 da CLT).
+- **Dias de férias vencidas a gozar hoje** — em dias, não em períodos, contando só os períodos já completos **hoje**. Um período inteiro são 30 dias; se você tirou 25 e sobraram 5, informe 5. Os períodos que ainda vão se completar até a saída entram sozinhos no cálculo (veja *Férias*): se a data de demissão escolhida fica depois do fim de um período, a tela avisa e oferece a opção *Vou tirar essas férias antes de sair*. Quando o campo é maior que zero, aparece logo abaixo a opção de pagamento em dobro, para o caso de o prazo de concessão de 12 meses já ter vencido ou ir vencer antes da saída (art. 137 da CLT).
 - **13º do ano da demissão** — nada recebido, só a 1ª parcela (adiantamento) ou o 13º inteiro já pago em dezembro.
 - **Dependentes** — cada um deduz R$ 189,59 da base do IRRF.
 - **Modalidade do FGTS** — saque-rescisão ou saque-aniversário.
@@ -103,7 +103,10 @@ Meses-calendário do ano com 15 dias ou mais trabalhados, × (remuneração ÷ 1
 
 ### Férias
 - **Vencidas**: dias informados × (remuneração ÷ 30), dobrados se o período concessivo venceu.
-- **Integrais fechadas no aviso**: se um período aquisitivo se completa **depois** da data da demissão, durante o aviso trabalhado ou projetado, ele é pago inteiro (12/12). Na data da demissão esse período ainda estava aberto, então não daria para informá-lo como vencido — antes da revisão ele simplesmente sumia da conta.
+- **Integrais que se completam até a saída**: todo período aquisitivo que se fecha entre hoje e o fim do contrato é pago inteiro (30 dias + 1/3), inclusive na justa causa — período completo é sempre devido.
+  - Fechado **durante o aviso** (trabalhado ou projetado): entra sempre, porque não há como gozá-lo.
+  - Fechado **antes da data da demissão** (quando você simula uma saída mais à frente): entra, a menos que você marque *Vou tirar essas férias antes de sair*. Se o prazo de 12 meses para a empresa concedê-lo vencer antes da saída, é pago em dobro.
+  - Antes da revisão esses períodos sumiam da conta, porque ainda estavam abertos quando a pessoa preenchia o campo de férias vencidas.
 - **Proporcionais**: meses aquisitivos — contados a partir da data-base, não do calendário — com 15 dias ou mais, × (remuneração ÷ 12).
 - Todas somam o terço constitucional.
 
